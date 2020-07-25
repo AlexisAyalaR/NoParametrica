@@ -1,0 +1,119 @@
+---
+title: "ProyectoEA3-ENP"
+author: "José Miguel Carmona"
+date: "12/5/2020"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(ggstance)
+
+```
+
+```{r}
+datos <- read.csv("avocado.csv", header = TRUE)
+head(datos)
+```
+
+
+```{r}
+datos <- datos %>%
+  select(Date, AveragePrice, Total.Volume, X4046, X4225,X4770, type, year, region) %>%
+  filter(region == "TotalUS") %>%
+  arrange(Date) %>%
+  select(-c(region,year))
+
+head(datos)
+```
+
+```{r}
+datebreaks <- seq(as.Date("2015-01-04"), as.Date("2018-03-25"), by = "6 month")
+ggplot(datos, aes(x = as.Date(Date), y = AveragePrice, color = type)) + geom_point()  + scale_x_date(breaks = datebreaks)
+```
+
+##Todo lo que pudimos de PCA
+
+```{r}
+#Idea 1: PCA para ver que 40 influye m?s en el precio
+
+datos2<-datos[,-1]
+
+datos2.pc<-princomp(datos2[,-6], cor=T)
+summary(datos2.pc, loadings=T)
+```
+
+```{r}
+library("factoextra")
+
+fviz_pca_var(datos2.pc, col.var="contrib")
+```
+
+##Analisis de clusters
+
+```{r}
+datos <- read.csv("avocado.csv", header = TRUE)
+
+datosCB <- datos %>%
+  select(Date, AveragePrice, Total.Volume, X4046, X4225,X4770, type, year, region) %>%
+  filter(region == "TotalUS") %>%
+  arrange(Date) %>%
+  select(-c(region,type,Date))
+
+
+kmedias4<-kmeans(scale(datosCB),4)
+kmedias4$size
+
+#install.packages("cluster")
+library(cluster)
+library(factoextra)
+
+fviz_cluster(pam(datosCB,4), ellipse.type = "convex", show.clust.cent = F, cex = 0.6)
+```
+
+##Redes neuronales y series de tiempo
+
+```{r}
+library (fpp2)
+
+#Datos sin 2018
+
+datosRed <- datos %>%
+  select(Date, AveragePrice, type, year, region) %>%
+  filter(region == "TotalUS", type=="organic", year!=2018) %>%
+  arrange(Date) %>%
+  select(-c(Date, region))
+
+precio<-ts(datosRed$AveragePrice, start=2015+4/365.25, freq=365.25/7)
+#autoplot(precio, main="Serie de tiempo de precio promedio 2015-2017 Organico", x="Year")
+
+```
+
+```{r}
+#Datos con 2018
+datosRedModelo <- datos %>%
+  select(Date, AveragePrice, type, year, region) %>%
+  filter(region == "TotalUS", type=="organic") %>%
+  arrange(Date) %>%
+  select(-c(Date, region))
+
+precioModelo<-ts(datosRedModelo$AveragePrice, start=2015+4/365.25, freq=365.25/7)
+autoplot(precioModelo, main="Serie de tiempo de precio promedio 2015-2018 Organico", x="Year")
+```
+
+
+```{r}
+#Para predecir y que me lo plotee
+fit <- nnetar(precio, lamda=0)
+autoplot(forecast(fit, h=52, bootstrap=T, level=0.95, PI=T))
+
+```
+
+
