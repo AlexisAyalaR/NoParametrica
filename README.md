@@ -1,3 +1,2 @@
 # NoParametrica
-# NoParametrica
-# NoParametrica
+Proyecto hecho en A3 NP
